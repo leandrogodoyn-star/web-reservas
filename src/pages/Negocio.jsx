@@ -96,6 +96,16 @@ export default function Negocio() {
       const dd = String(d.getDate()).padStart(2, "0");
       const fecha = `${yyyy}-${mm}-${dd}`;
 
+      // Verificar si es feriado
+      const { data: evento } = await supabase
+        .from("eventos_especiales")
+        .select("tipo, servicio_especial")
+        .eq("admin_id", negocioId)
+        .eq("fecha", fecha)
+        .single();
+
+      if (evento?.tipo === "feriado") continue;
+
       const { data: horarios } = await supabase
         .from("horarios")
         .select("id")
@@ -109,8 +119,10 @@ export default function Negocio() {
           dia: d.getDate(),
           mes: MESES[d.getMonth()],
           diaSemana: DIAS_SEMANA[d.getDay()],
+          evento: evento || null,
         });
       }
+
       if (dias.length >= 7) break;
     }
 
@@ -396,21 +408,27 @@ export default function Negocio() {
                     }}
                     style={{
                       backgroundColor: COLORS.surface,
-                      border: `1px solid ${COLORS.border}`,
+                      border: `1px solid ${d.evento?.tipo === "servicio_especial" ? "#6C63FF55" : COLORS.border}`,
                       borderRadius: 14,
                       padding: 16,
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       gap: 16,
+                      width: "100%",
+                      boxSizing: "border-box",
                     }}
                   >
                     <div
                       style={{
-                        backgroundColor: COLORS.accentDim,
+                        backgroundColor:
+                          d.evento?.tipo === "servicio_especial"
+                            ? COLORS.accentDim
+                            : "#1A1D27",
                         borderRadius: 10,
                         padding: "8px 14px",
                         textAlign: "center",
+                        border: `1px solid ${d.evento?.tipo === "servicio_especial" ? COLORS.accent + "44" : "transparent"}`,
                       }}
                     >
                       <p
@@ -443,15 +461,42 @@ export default function Negocio() {
                         {d.mes}
                       </p>
                     </div>
-                    <span
-                      style={{
-                        color: COLORS.textPrimary,
-                        fontSize: 15,
-                        fontWeight: 600,
-                      }}
-                    >
-                      {d.diaSemana} {d.dia} de {d.mes}
-                    </span>
+                    <div style={{ textAlign: "left" }}>
+                      <p
+                        style={{
+                          color: COLORS.textPrimary,
+                          fontSize: 15,
+                          fontWeight: 600,
+                          margin: 0,
+                        }}
+                      >
+                        {d.diaSemana} {d.dia} de {d.mes}
+                      </p>
+                      {d.evento?.tipo === "servicio_especial" && (
+                        <p
+                          style={{
+                            color: COLORS.accentLight,
+                            fontSize: 12,
+                            margin: "4px 0 0",
+                            fontWeight: 600,
+                          }}
+                        >
+                          🟣 {d.evento.servicio_especial}
+                        </p>
+                      )}
+                      {d.evento?.tipo === "horario_especial" && (
+                        <p
+                          style={{
+                            color: "#FFAA40",
+                            fontSize: 12,
+                            margin: "4px 0 0",
+                            fontWeight: 600,
+                          }}
+                        >
+                          🟡 Horario especial
+                        </p>
+                      )}
+                    </div>
                   </button>
                 ))}
               </div>
