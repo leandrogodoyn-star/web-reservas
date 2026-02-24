@@ -103,6 +103,8 @@ export default function Negocio() {
         .eq("admin_id", negocioId)
         .eq("fecha", fecha);
 
+      console.log("fecha:", fecha, "eventos:", eventos, "error:", errorEvento);
+
       const evento = eventos?.[0] || null;
 
       // Si es feriado, saltar este día
