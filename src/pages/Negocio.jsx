@@ -96,14 +96,16 @@ export default function Negocio() {
       const dd = String(d.getDate()).padStart(2, "0");
       const fecha = `${yyyy}-${mm}-${dd}`;
 
-      // Verificar si es feriado
-      const { data: evento } = await supabase
+      // Verificar evento especial — sin .single() para evitar errores
+      const { data: eventos } = await supabase
         .from("eventos_especiales")
         .select("tipo, servicio_especial")
         .eq("admin_id", negocioId)
-        .eq("fecha", fecha)
-        .single();
+        .eq("fecha", fecha);
 
+      const evento = eventos?.[0] || null;
+
+      // Si es feriado, saltar este día
       if (evento?.tipo === "feriado") continue;
 
       const { data: horarios } = await supabase
@@ -119,13 +121,13 @@ export default function Negocio() {
           dia: d.getDate(),
           mes: MESES[d.getMonth()],
           diaSemana: DIAS_SEMANA[d.getDay()],
-          evento: evento || null,
+          evento: evento,
         });
       }
 
       if (dias.length >= 7) break;
     }
-    console.log("Evento para", fecha, ":", evento);
+
     setDiasDisponibles(dias);
   };
 
@@ -429,6 +431,7 @@ export default function Negocio() {
                         padding: "8px 14px",
                         textAlign: "center",
                         border: `1px solid ${d.evento?.tipo === "servicio_especial" ? COLORS.accent + "44" : "transparent"}`,
+                        minWidth: 52,
                       }}
                     >
                       <p
