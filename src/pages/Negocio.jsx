@@ -59,6 +59,7 @@ export default function Negocio() {
   }, [codigo]);
 
   const cargarNegocio = async () => {
+    console.log("cargarNegocio ejecutada con codigo:", codigo);
     const { data: negocioData } = await supabase
       .from("profiles")
       .select("*")
