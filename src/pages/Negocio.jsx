@@ -85,6 +85,7 @@ export default function Negocio() {
   };
 
   const cargarDiasDisponibles = async (negocioId) => {
+    console.log("cargarDiasDisponibles llamada con negocioId:", negocioId);
     const hoy = new Date();
     const dias = [];
 
