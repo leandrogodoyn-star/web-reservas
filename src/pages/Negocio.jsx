@@ -125,7 +125,7 @@ export default function Negocio() {
 
       if (dias.length >= 7) break;
     }
-
+    console.log("Evento para", fecha, ":", evento);
     setDiasDisponibles(dias);
   };
 
