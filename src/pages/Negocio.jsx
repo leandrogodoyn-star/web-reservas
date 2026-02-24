@@ -105,7 +105,7 @@ export default function Negocio() {
         .eq("admin_id", negocioId)
         .eq("fecha", fecha);
 
-      console.log("fecha:", fecha, "eventos:", eventos, "error:", errorEvento);
+      console.log("fecha:", fecha, "eventos:", eventos);
 
       const evento = eventos?.[0] || null;
 
