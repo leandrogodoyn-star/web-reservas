@@ -53,11 +53,10 @@ export default function Negocio() {
   const [diasDisponibles, setDiasDisponibles] = useState([]);
   const [horasDisponibles, setHorasDisponibles] = useState([]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     cargarNegocio();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo]);
-
   const cargarNegocio = async () => {
     console.log("cargarNegocio ejecutada con codigo:", codigo);
     const { data: negocioData } = await supabase
