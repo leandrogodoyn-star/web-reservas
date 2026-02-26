@@ -58,7 +58,6 @@ export default function Negocio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo]);
   const cargarNegocio = async () => {
-    console.log("servicios:", serviciosData);
     console.log("cargarNegocio ejecutada con codigo:", codigo);
     const { data: negocioData } = await supabase
       .from("profiles")
