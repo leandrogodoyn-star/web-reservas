@@ -49,6 +49,8 @@ export default function Negocio() {
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
   const [reservando, setReservando] = useState(false);
+  const [pagando, setPagando] = useState(false);
+  const [pagoCompletado, setPagoCompletado] = useState(false);
 
   const [diasDisponibles, setDiasDisponibles] = useState([]);
   const [horasDisponibles, setHorasDisponibles] = useState([]);
@@ -73,6 +75,7 @@ export default function Negocio() {
     }
 
     setNegocio(negocioData);
+    console.log("mp_habilitado:", negocioData.mp_habilitado);
 
     const { data: serviciosData } = await supabase
       .from("servicios")
@@ -688,39 +691,94 @@ export default function Negocio() {
                 />
               </div>
             </div>
-            <button
-              onClick={confirmarReserva}
-              disabled={reservando || !nombre.trim() || !telefono.trim()}
-              style={{
-                width: "100%",
-                marginTop: 24,
-                backgroundColor: COLORS.accent,
-                border: "none",
-                borderRadius: 14,
-                padding: 18,
-                cursor: "pointer",
-                color: "white",
-                fontSize: 16,
-                fontWeight: 700,
-                opacity: !nombre.trim() || !telefono.trim() ? 0.5 : 1,
-              }}
-            >
-              {reservando ? "Confirmando..." : "Confirmar turno"}
-            </button>
-            <button
-              onClick={() => setPaso(3)}
-              style={{
-                marginTop: 12,
-                width: "100%",
-                backgroundColor: "transparent",
-                border: "none",
-                color: COLORS.textMuted,
-                cursor: "pointer",
-                fontSize: 14,
-              }}
-            >
-              ← Volver
-            </button>
+            {/* Si MP está habilitado y no pagó todavía */}
+            {negocio.mp_habilitado && !pagoCompletado ? (
+              <button
+                onClick={async () => {
+                  if (!nombre.trim() || !telefono.trim()) return;
+                  setPagando(true);
+                  try {
+                    const res = await fetch(
+                      "https://app-turnos-4qaf.onrender.com/crear-preferencia",
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          access_token: negocio.mp_access_token,
+                          titulo: servicioElegido?.nombre || "Turno",
+                          precio: servicioElegido?.precio || 1,
+                          nombre: nombre.trim(),
+                          telefono: telefono.trim(),
+                        }),
+                      },
+                    );
+                    const data = await res.json();
+                    if (data.init_point) {
+                      window.location.href = data.init_point;
+                    }
+                  } catch (e) {
+                    alert("Error al conectar con Mercado Pago.");
+                  }
+                  setPagando(false);
+                }}
+                disabled={pagando || !nombre.trim() || !telefono.trim()}
+                style={{
+                  width: "100%",
+                  marginTop: 24,
+                  backgroundColor: "#00AEEF",
+                  border: "none",
+                  borderRadius: 14,
+                  padding: 18,
+                  cursor: "pointer",
+                  color: "white",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  opacity: !nombre.trim() || !telefono.trim() ? 0.5 : 1,
+                }}
+              >
+                {pagando ? "Redirigiendo..." : "Pagar con Mercado Pago"}
+              </button>
+            ) : (
+              <button
+                onClick={confirmarReserva}
+                disabled={reservando || !nombre.trim() || !telefono.trim()}
+                style={{
+                  width: "100%",
+                  marginTop: 24,
+                  backgroundColor: COLORS.accent,
+                  border: "none",
+                  borderRadius: 14,
+                  padding: 18,
+                  cursor: "pointer",
+                  color: "white",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  opacity: !nombre.trim() || !telefono.trim() ? 0.5 : 1,
+                }}
+              >
+                {reservando ? "Confirmando..." : "Confirmar turno"}
+              </button>
+            )}
+
+            {/* Si MP está habilitado pero no es obligatorio, mostrar opción de saltar */}
+            {negocio.mp_habilitado &&
+              !negocio.mp_obligatorio &&
+              !pagoCompletado && (
+                <button
+                  onClick={() => setPagoCompletado(true)}
+                  style={{
+                    width: "100%",
+                    marginTop: 10,
+                    backgroundColor: "transparent",
+                    border: "none",
+                    color: COLORS.textMuted,
+                    cursor: "pointer",
+                    fontSize: 13,
+                  }}
+                >
+                  Continuar sin pagar
+                </button>
+              )}
           </div>
         )}
       </div>
