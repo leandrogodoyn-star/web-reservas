@@ -52,13 +52,14 @@ export default function Negocio() {
 
   const [diasDisponibles, setDiasDisponibles] = useState([]);
   const [horasDisponibles, setHorasDisponibles] = useState([]);
+  const [cargandoDias, setCargandoDias] = useState(false);
 
   useEffect(() => {
     cargarNegocio();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo]);
+
   const cargarNegocio = async () => {
-    console.log("cargarNegocio ejecutada con codigo:", codigo);
     const { data: negocioData } = await supabase
       .from("profiles")
       .select("*")
@@ -79,14 +80,13 @@ export default function Negocio() {
       .eq("admin_id", negocioData.id)
       .eq("activo", true);
 
-    console.log("servicios:", serviciosData);
     setServicios(serviciosData || []);
-    await cargarDiasDisponibles(negocioData.id);
+    await cargarDiasDisponibles(negocioData.id, null);
     setCargando(false);
   };
 
-  const cargarDiasDisponibles = async (negocioId) => {
-    console.log("cargarDiasDisponibles llamada con negocioId:", negocioId);
+  const cargarDiasDisponibles = async (negocioId, servicioNombre) => {
+    setCargandoDias(true);
     const hoy = new Date();
     const dias = [];
 
@@ -98,19 +98,25 @@ export default function Negocio() {
       const dd = String(d.getDate()).padStart(2, "0");
       const fecha = `${yyyy}-${mm}-${dd}`;
 
-      // Verificar evento especial — sin .single() para evitar errores
       const { data: eventos } = await supabase
         .from("eventos_especiales")
         .select("tipo, servicio_especial")
         .eq("admin_id", negocioId)
         .eq("fecha", fecha);
 
-      console.log("fecha:", fecha, "eventos:", eventos);
-
       const evento = eventos?.[0] || null;
 
-      // Si es feriado, saltar este día
       if (evento?.tipo === "feriado") continue;
+
+      // Si el cliente eligió un servicio especial, solo mostrar días que tengan ese evento
+      if (servicioNombre) {
+        if (
+          !evento ||
+          evento.tipo !== "servicio_especial" ||
+          evento.servicio_especial !== servicioNombre
+        )
+          continue;
+      }
 
       const { data: horarios } = await supabase
         .from("horarios")
@@ -133,6 +139,7 @@ export default function Negocio() {
     }
 
     setDiasDisponibles(dias);
+    setCargandoDias(false);
   };
 
   const cargarHoras = async (fecha) => {
@@ -308,6 +315,7 @@ export default function Negocio() {
                     key={s.id}
                     onClick={() => {
                       setServicioElegido(s);
+                      cargarDiasDisponibles(negocio.id, s.nombre);
                       setPaso(2);
                     }}
                     style={{
@@ -341,6 +349,7 @@ export default function Negocio() {
                 <button
                   onClick={() => {
                     setServicioElegido(null);
+                    cargarDiasDisponibles(negocio.id, null);
                     setPaso(2);
                   }}
                   style={{
@@ -358,7 +367,10 @@ export default function Negocio() {
               </div>
             ) : (
               <button
-                onClick={() => setPaso(2)}
+                onClick={() => {
+                  cargarDiasDisponibles(negocio.id, null);
+                  setPaso(2);
+                }}
                 style={{
                   width: "100%",
                   backgroundColor: COLORS.accent,
@@ -390,7 +402,7 @@ export default function Negocio() {
             >
               ¿Qué día preferís?
             </h2>
-            {diasDisponibles.length === 0 ? (
+            {cargandoDias ? (
               <p
                 style={{
                   color: COLORS.textMuted,
@@ -398,7 +410,17 @@ export default function Negocio() {
                   padding: 40,
                 }}
               >
-                No hay turnos disponibles por el momento.
+                Cargando días...
+              </p>
+            ) : diasDisponibles.length === 0 ? (
+              <p
+                style={{
+                  color: COLORS.textMuted,
+                  textAlign: "center",
+                  padding: 40,
+                }}
+              >
+                No hay turnos disponibles para este servicio por el momento.
               </p>
             ) : (
               <div
