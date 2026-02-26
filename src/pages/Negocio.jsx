@@ -130,6 +130,9 @@ export default function Negocio() {
             evento.servicio_especial !== servicioNombre
           )
             continue;
+        } else {
+          // Servicio normal: no mostrar días que tengan un servicio especial diferente
+          if (evento?.tipo === "servicio_especial") continue;
         }
       }
 
