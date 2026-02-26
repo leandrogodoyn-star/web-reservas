@@ -80,6 +80,7 @@ export default function Negocio() {
       .eq("admin_id", negocioData.id)
       .eq("activo", true);
 
+    console.log("servicios:", serviciosData);
     setServicios(serviciosData || []);
     await cargarDiasDisponibles(negocioData.id);
     setCargando(false);
