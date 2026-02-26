@@ -111,14 +111,26 @@ export default function Negocio() {
 
       if (evento?.tipo === "feriado") continue;
 
-      // Si el cliente eligió un servicio especial, solo mostrar días que tengan ese evento
+      // Verificar si el servicio tiene algún día especial asignado
       if (servicioNombre) {
-        if (
-          !evento ||
-          evento.tipo !== "servicio_especial" ||
-          evento.servicio_especial !== servicioNombre
-        )
-          continue;
+        const { data: eventosDelServicio } = await supabase
+          .from("eventos_especiales")
+          .select("id")
+          .eq("admin_id", negocioId)
+          .eq("tipo", "servicio_especial")
+          .eq("servicio_especial", servicioNombre);
+
+        const tienesDiasEspeciales =
+          eventosDelServicio && eventosDelServicio.length > 0;
+
+        if (tienesDiasEspeciales) {
+          if (
+            !evento ||
+            evento.tipo !== "servicio_especial" ||
+            evento.servicio_especial !== servicioNombre
+          )
+            continue;
+        }
       }
 
       const { data: horarios } = await supabase
