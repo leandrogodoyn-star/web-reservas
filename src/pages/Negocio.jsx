@@ -138,7 +138,9 @@ export default function Negocio() {
           .select("id")
           .eq("admin_id", negocioId)
           .eq("tipo", "servicio_especial")
-          .eq("servicio_especial", servicioNombre)
+          .eq("servicio_especial", servicioNombre.trim())
+          .gte("fecha", fechaInicio)
+          .lte("fecha", fechaFin)
         : Promise.resolve({ data: null }),
     ]);
 
@@ -166,7 +168,7 @@ export default function Negocio() {
           if (
             !evento ||
             evento.tipo !== "servicio_especial" ||
-            evento.servicio_especial !== servicioNombre
+            evento.servicio_especial?.trim() !== servicioNombre.trim()
           )
             continue;
         } else {
