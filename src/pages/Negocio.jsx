@@ -38,11 +38,13 @@ export default function Negocio() {
 
   const [negocio, setNegocio] = useState(null);
   const [servicios, setServicios] = useState([]);
+  const [profesionales, setProfesionales] = useState([]);
   const [paso, setPaso] = useState(1);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
 
   const [servicioElegido, setServicioElegido] = useState(null);
+  const [profesionalElegido, setProfesionalElegido] = useState(null);
   const [fechaElegida, setFechaElegida] = useState(null);
   const [horaElegida, setHoraElegida] = useState(null);
   const [horarioId, setHorarioId] = useState(null);
@@ -83,6 +85,16 @@ export default function Negocio() {
       .eq("activo", true);
 
     setServicios(serviciosData || []);
+
+    if (negocioData.is_premium) {
+      const { data: profData } = await supabase
+        .from("profesionales")
+        .select("*")
+        .eq("admin_id", negocioData.id)
+        .eq("activo", true);
+      setProfesionales(profData || []);
+    }
+
     await cargarDiasDisponibles(negocioData.id, null);
     setCargando(false);
   };
@@ -209,12 +221,54 @@ export default function Negocio() {
     if (!nombre.trim() || !telefono.trim()) return;
     setReservando(true);
 
+    // Verificación de límite de turnos
+    const { data: adminProfile } = await supabase
+      .from("profiles")
+      .select("is_premium, reservas_mes, last_reset")
+      .eq("id", negocio.id)
+      .single();
+
+    if (adminProfile) {
+      const { is_premium, reservas_mes, last_reset } = adminProfile;
+      const limite = 60; // Límite del Tier Free
+      const hoy = new Date();
+      const mesActual = hoy.getMonth();
+
+      let mesGuardado = -1;
+      if (last_reset) {
+        mesGuardado = new Date(last_reset).getMonth();
+      }
+
+      let reservasActuales = reservas_mes || 0;
+      if (mesGuardado !== mesActual) {
+        // Reset count for new month
+        reservasActuales = 0;
+        await supabase
+          .from("profiles")
+          .update({ reservas_mes: 0, last_reset: hoy.toISOString() })
+          .eq("id", negocio.id);
+      }
+
+      if (!is_premium && reservasActuales >= limite) {
+        alert("Este negocio ha superado su límite mensual de reservas. Por favor inténtelo más tarde.");
+        setReservando(false);
+        return;
+      }
+
+      // Si pasa la validación, incrementamos el contador
+      await supabase
+        .from("profiles")
+        .update({ reservas_mes: reservasActuales + 1 })
+        .eq("id", negocio.id);
+    }
+
     const { error } = await supabase.from("reservas").insert({
       admin_id: negocio.id,
       horario_id: horarioId,
       cliente_nombre: nombre.trim(),
       cliente_telefono: telefono.trim(),
       servicio: servicioElegido?.nombre || null,
+      profesional_id: profesionalElegido?.id || null,
     });
 
     if (!error) {
@@ -243,6 +297,7 @@ export default function Negocio() {
           fecha: fechaElegida,
           hora: horaElegida,
           servicio: servicioElegido?.nombre,
+          profesional: profesionalElegido?.nombre,
         },
       });
     }
@@ -360,7 +415,7 @@ export default function Negocio() {
             marginBottom: 32,
           }}
         >
-          {[1, 2, 3, 4].map((p) => (
+          {[1, 2, 3, 4, 5].map((p) => (
             <div
               key={p}
               style={{
@@ -369,7 +424,8 @@ export default function Negocio() {
                 borderRadius: 4,
                 backgroundColor: paso >= p ? COLORS.accent : COLORS.border,
                 transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                opacity: paso >= p ? 1 : 0.5
+                opacity: paso >= p ? 1 : 0.5,
+                display: (p === 2 && profesionales.length === 0) ? "none" : "block"
               }}
             />
           ))}
@@ -401,8 +457,12 @@ export default function Negocio() {
                     className="selectable-card"
                     onClick={() => {
                       setServicioElegido(s);
-                      cargarDiasDisponibles(negocio.id, s.nombre);
-                      setPaso(2);
+                      if (profesionales.length > 0) {
+                        setPaso(2);
+                      } else {
+                        cargarDiasDisponibles(negocio.id, s.nombre);
+                        setPaso(3);
+                      }
                     }}
                     style={{
                       borderRadius: 16,
@@ -434,8 +494,12 @@ export default function Negocio() {
                   className="hover-scale"
                   onClick={() => {
                     setServicioElegido(null);
-                    cargarDiasDisponibles(negocio.id, null);
-                    setPaso(2);
+                    if (profesionales.length > 0) {
+                      setPaso(2);
+                    } else {
+                      cargarDiasDisponibles(negocio.id, null);
+                      setPaso(3);
+                    }
                   }}
                   style={{
                     backgroundColor: "transparent",
@@ -455,8 +519,12 @@ export default function Negocio() {
               <button
                 className="hover-scale"
                 onClick={() => {
-                  cargarDiasDisponibles(negocio.id, null);
-                  setPaso(2);
+                  if (profesionales.length > 0) {
+                    setPaso(2);
+                  } else {
+                    cargarDiasDisponibles(negocio.id, null);
+                    setPaso(3);
+                  }
                 }}
                 style={{
                   width: "100%",
@@ -477,8 +545,100 @@ export default function Negocio() {
           </div>
         )}
 
-        {/* Paso 2 — Fecha */}
-        {paso === 2 && (
+        {/* Paso 2 — Profesional (Opcional) */}
+        {paso === 2 && profesionales.length > 0 && (
+          <div className="animate-fade-in">
+            <h2
+              style={{
+                color: "white",
+                fontSize: 20,
+                fontWeight: 700,
+                marginBottom: 20,
+                letterSpacing: "-0.3px"
+              }}
+            >
+              ¿Con quién te querés atender?
+            </h2>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: 12 }}
+            >
+              {profesionales.map((p) => (
+                <button
+                  key={p.id}
+                  className="selectable-card"
+                  onClick={() => {
+                    setProfesionalElegido(p);
+                    cargarDiasDisponibles(negocio.id, servicioElegido?.nombre);
+                    setPaso(3);
+                  }}
+                  style={{
+                    borderRadius: 16,
+                    padding: "18px 20px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    color: "white"
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 16,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {p.nombre}
+                  </span>
+                  {p.especialidad && (
+                    <span style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: 500 }}>
+                      {p.especialidad}
+                    </span>
+                  )}
+                </button>
+              ))}
+              <button
+                className="hover-scale"
+                onClick={() => {
+                  setProfesionalElegido(null);
+                  cargarDiasDisponibles(negocio.id, servicioElegido?.nombre);
+                  setPaso(3);
+                }}
+                style={{
+                  backgroundColor: "transparent",
+                  border: "none",
+                  padding: 16,
+                  cursor: "pointer",
+                  color: COLORS.textSecondary,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  marginTop: 8
+                }}
+              >
+                Cualquiera está bien
+              </button>
+            </div>
+            <button
+              className="hover-scale"
+              onClick={() => setPaso(1)}
+              style={{
+                marginTop: 20,
+                backgroundColor: "transparent",
+                border: "none",
+                color: COLORS.textSecondary,
+                cursor: "pointer",
+                fontSize: 14,
+                fontWeight: 600,
+                width: "100%"
+              }}
+            >
+              ← Volver a servicios
+            </button>
+          </div>
+        )}
+
+        {/* Paso 3 — Fecha */}
+        {paso === 3 && (
           <div className="animate-fade-in">
             <h2
               style={{
@@ -499,7 +659,7 @@ export default function Negocio() {
               <div style={{ padding: 40, textAlign: "center", backgroundColor: COLORS.surface, borderRadius: 16, border: `1px dashed ${COLORS.border}` }}>
                 <span style={{ fontSize: 32, marginBottom: 12, display: "block" }}>📅</span>
                 <p style={{ color: COLORS.textSecondary, margin: 0, lineHeight: 1.5 }}>
-                  No hay turnos disponibles para este servicio en los próximos días.
+                  No hay turnos disponibles para este servicio o profesional en los próximos días.
                 </p>
               </div>
             ) : (
@@ -513,7 +673,7 @@ export default function Negocio() {
                     onClick={async () => {
                       setFechaElegida(d);
                       await cargarHoras(d.fecha);
-                      setPaso(3);
+                      setPaso(4);
                     }}
                     style={{
                       borderRadius: 16,
@@ -636,8 +796,8 @@ export default function Negocio() {
           </div>
         )}
 
-        {/* Paso 3 — Hora */}
-        {paso === 3 && (
+        {/* Paso 4 — Hora */}
+        {paso === 4 && (
           <div className="animate-fade-in">
             <h2
               style={{
@@ -673,7 +833,7 @@ export default function Negocio() {
                     onClick={() => {
                       setHoraElegida(h.hora);
                       setHorarioId(h.id);
-                      setPaso(4);
+                      setPaso(5);
                     }}
                     style={{
                       borderRadius: 12,
@@ -692,7 +852,13 @@ export default function Negocio() {
 
             <button
               className="hover-scale"
-              onClick={() => setPaso(2)}
+              onClick={() => {
+                if (profesionales.length > 0) {
+                  setPaso(3);
+                } else {
+                  setPaso(2);
+                }
+              }}
               style={{
                 marginTop: 24,
                 backgroundColor: "transparent",
@@ -709,8 +875,8 @@ export default function Negocio() {
           </div>
         )}
 
-        {/* Paso 4 — Datos */}
-        {paso === 4 && (
+        {/* Paso 5 — Datos */}
+        {paso === 5 && (
           <div className="animate-fade-in">
             <h2
               style={{
@@ -736,6 +902,11 @@ export default function Negocio() {
               {servicioElegido && (
                 <p style={{ color: COLORS.accentLight, fontWeight: 700, margin: 0, fontSize: 13 }}>
                   {servicioElegido.nombre}
+                </p>
+              )}
+              {profesionalElegido && (
+                <p style={{ color: COLORS.textSecondary, fontWeight: 600, margin: 0, fontSize: 13 }}>
+                  Con {profesionalElegido.nombre}
                 </p>
               )}
               <p style={{ color: "white", fontWeight: 600, margin: 0, fontSize: 15 }}>
@@ -903,7 +1074,7 @@ export default function Negocio() {
 
             <button
               className="hover-scale"
-              onClick={() => setPaso(3)}
+              onClick={() => setPaso(4)}
               style={{
                 marginTop: 16,
                 backgroundColor: "transparent",
