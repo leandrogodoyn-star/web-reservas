@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 const COLORS = {
@@ -122,11 +122,11 @@ export default function Negocio() {
         .lte("fecha", fechaFin),
       servicioNombre
         ? supabase
-            .from("eventos_especiales")
-            .select("id")
-            .eq("admin_id", negocioId)
-            .eq("tipo", "servicio_especial")
-            .eq("servicio_especial", servicioNombre)
+          .from("eventos_especiales")
+          .select("id")
+          .eq("admin_id", negocioId)
+          .eq("tipo", "servicio_especial")
+          .eq("servicio_especial", servicioNombre)
         : Promise.resolve({ data: null }),
     ]);
 
@@ -258,9 +258,18 @@ export default function Negocio() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          flexDirection: "column",
+          gap: 16
         }}
       >
-        <p style={{ color: COLORS.textMuted }}>Cargando...</p>
+        <div style={{
+          width: 40, height: 40, borderRadius: "50%",
+          border: `3px solid ${COLORS.border}`,
+          borderTopColor: COLORS.accent,
+          animation: "spin 1s linear infinite"
+        }} />
+        <style>{"@keyframes spin { 100% { transform: rotate(360deg); } }"}</style>
+        <p style={{ color: COLORS.textMuted, fontWeight: 500, letterSpacing: 1 }}>CARGANDO...</p>
       </div>
     );
 
@@ -284,38 +293,60 @@ export default function Negocio() {
       style={{
         minHeight: "100vh",
         backgroundColor: COLORS.bg,
+        backgroundImage: "radial-gradient(circle at top right, #6C63FF10 0%, transparent 400px), radial-gradient(circle at bottom left, #22D3A50A 0%, transparent 400px)",
         display: "flex",
         justifyContent: "center",
+        padding: "20px 16px",
       }}
     >
-      <div style={{ width: "100%", maxWidth: 480, padding: 24 }}>
+      <div
+        className="glass-panel"
+        style={{ width: "100%", maxWidth: 480, padding: "32px 24px", alignSelf: "flex-start", marginTop: "2vh" }}
+      >
         {/* Header negocio */}
-        <div style={{ textAlign: "center", marginBottom: 32, paddingTop: 32 }}>
-          {negocio.avatar && (
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
+          {negocio.avatar ? (
             <img
               src={negocio.avatar}
               alt="logo"
+              className="hover-scale"
               style={{
-                width: 80,
-                height: 80,
+                width: 88,
+                height: 88,
                 borderRadius: "50%",
                 objectFit: "cover",
-                marginBottom: 12,
-                border: `2px solid ${COLORS.accent}`,
+                marginBottom: 16,
+                border: `3px solid ${COLORS.accent}`,
+                boxShadow: `0 8px 24px ${COLORS.accentDim}`,
+                cursor: "default"
               }}
             />
+          ) : (
+            <div style={{
+              width: 88, height: 88, borderRadius: "50%",
+              backgroundColor: COLORS.surface,
+              border: `3px solid ${COLORS.border}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 16px auto",
+              boxShadow: `0 8px 16px rgba(0,0,0,0.2)`
+            }}>
+              <span style={{ fontSize: 32, fontWeight: 800, color: COLORS.accentLight }}>
+                {negocio.nombre[0].toUpperCase()}
+              </span>
+            </div>
           )}
           <h1
             style={{
-              color: COLORS.textPrimary,
-              fontSize: 24,
+              color: "white",
+              fontSize: 26,
               fontWeight: 800,
               margin: 0,
+              letterSpacing: "-0.5px"
             }}
           >
             {negocio.nombre}
           </h1>
-          <p style={{ color: COLORS.textMuted, fontSize: 13, marginTop: 4 }}>
+          <p style={{ color: COLORS.textSecondary, fontSize: 14, marginTop: 6, fontWeight: 500 }}>
             Reservá tu turno online
           </p>
         </div>
@@ -325,19 +356,20 @@ export default function Negocio() {
           style={{
             display: "flex",
             justifyContent: "center",
-            gap: 8,
-            marginBottom: 28,
+            gap: 6,
+            marginBottom: 32,
           }}
         >
           {[1, 2, 3, 4].map((p) => (
             <div
               key={p}
               style={{
-                width: paso >= p ? 24 : 8,
-                height: 8,
+                width: paso === p ? 28 : paso > p ? 16 : 8,
+                height: 6,
                 borderRadius: 4,
                 backgroundColor: paso >= p ? COLORS.accent : COLORS.border,
-                transition: "all 0.3s",
+                transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                opacity: paso >= p ? 1 : 0.5
               }}
             />
           ))}
@@ -345,60 +377,61 @@ export default function Negocio() {
 
         {/* Paso 1 — Servicio */}
         {paso === 1 && (
-          <div>
+          <div className="animate-fade-in">
             <h2
               style={{
-                color: COLORS.textPrimary,
-                fontSize: 18,
+                color: "white",
+                fontSize: 20,
                 fontWeight: 700,
-                marginBottom: 16,
+                marginBottom: 20,
+                letterSpacing: "-0.3px"
               }}
             >
               {servicios.length > 0
                 ? "¿Qué servicio necesitás?"
-                : "Reservá tu turno"}
+                : "Cargando servicios..."}
             </h2>
             {servicios.length > 0 ? (
               <div
-                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+                style={{ display: "flex", flexDirection: "column", gap: 12 }}
               >
                 {servicios.map((s) => (
                   <button
                     key={s.id}
+                    className="selectable-card"
                     onClick={() => {
                       setServicioElegido(s);
                       cargarDiasDisponibles(negocio.id, s.nombre);
                       setPaso(2);
                     }}
                     style={{
-                      backgroundColor: COLORS.surface,
-                      border: `1px solid ${COLORS.border}`,
-                      borderRadius: 14,
-                      padding: 16,
+                      borderRadius: 16,
+                      padding: "18px 20px",
                       cursor: "pointer",
                       textAlign: "left",
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
+                      color: "white"
                     }}
                   >
                     <span
                       style={{
-                        color: COLORS.textPrimary,
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: 600,
                       }}
                     >
                       {s.nombre}
                     </span>
                     {s.precio && (
-                      <span style={{ color: COLORS.success, fontWeight: 700 }}>
+                      <span style={{ color: COLORS.success, fontWeight: 800, fontSize: 16, backgroundColor: COLORS.successDim, padding: "4px 10px", borderRadius: 8 }}>
                         ${s.precio.toLocaleString("es-AR")}
                       </span>
                     )}
                   </button>
                 ))}
                 <button
+                  className="hover-scale"
                   onClick={() => {
                     setServicioElegido(null);
                     cargarDiasDisponibles(negocio.id, null);
@@ -406,19 +439,21 @@ export default function Negocio() {
                   }}
                   style={{
                     backgroundColor: "transparent",
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: 14,
-                    padding: 14,
+                    border: "none",
+                    padding: 16,
                     cursor: "pointer",
-                    color: COLORS.textMuted,
-                    fontSize: 13,
+                    color: COLORS.textSecondary,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    marginTop: 8
                   }}
                 >
-                  Continuar sin elegir servicio
+                  Omitir selección de servicio
                 </button>
               </div>
             ) : (
               <button
+                className="hover-scale"
                 onClick={() => {
                   cargarDiasDisponibles(negocio.id, null);
                   setPaso(2);
@@ -427,12 +462,13 @@ export default function Negocio() {
                   width: "100%",
                   backgroundColor: COLORS.accent,
                   border: "none",
-                  borderRadius: 14,
-                  padding: 18,
+                  borderRadius: 16,
+                  padding: 20,
                   cursor: "pointer",
                   color: "white",
                   fontSize: 16,
                   fontWeight: 700,
+                  boxShadow: `0 8px 24px ${COLORS.accentDim}`,
                 }}
               >
                 Elegir fecha y hora →
@@ -443,54 +479,46 @@ export default function Negocio() {
 
         {/* Paso 2 — Fecha */}
         {paso === 2 && (
-          <div>
+          <div className="animate-fade-in">
             <h2
               style={{
-                color: COLORS.textPrimary,
-                fontSize: 18,
+                color: "white",
+                fontSize: 20,
                 fontWeight: 700,
-                marginBottom: 16,
+                marginBottom: 20,
+                letterSpacing: "-0.3px"
               }}
             >
               ¿Qué día preferís?
             </h2>
             {cargandoDias ? (
-              <p
-                style={{
-                  color: COLORS.textMuted,
-                  textAlign: "center",
-                  padding: 40,
-                }}
-              >
-                Cargando días...
+              <p style={{ color: COLORS.textMuted, textAlign: "center", padding: 40, fontWeight: 500 }}>
+                Cargando calendario...
               </p>
             ) : diasDisponibles.length === 0 ? (
-              <p
-                style={{
-                  color: COLORS.textMuted,
-                  textAlign: "center",
-                  padding: 40,
-                }}
-              >
-                No hay turnos disponibles para este servicio por el momento.
-              </p>
+              <div style={{ padding: 40, textAlign: "center", backgroundColor: COLORS.surface, borderRadius: 16, border: `1px dashed ${COLORS.border}` }}>
+                <span style={{ fontSize: 32, marginBottom: 12, display: "block" }}>📅</span>
+                <p style={{ color: COLORS.textSecondary, margin: 0, lineHeight: 1.5 }}>
+                  No hay turnos disponibles para este servicio en los próximos días.
+                </p>
+              </div>
             ) : (
               <div
-                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+                style={{ display: "flex", flexDirection: "column", gap: 12 }}
               >
                 {diasDisponibles.map((d) => (
                   <button
                     key={d.fecha}
+                    className="selectable-card"
                     onClick={async () => {
                       setFechaElegida(d);
                       await cargarHoras(d.fecha);
                       setPaso(3);
                     }}
                     style={{
-                      backgroundColor: COLORS.surface,
-                      border: `1px solid ${d.evento?.tipo === "servicio_especial" ? "#6C63FF55" : COLORS.border}`,
-                      borderRadius: 14,
+                      borderRadius: 16,
                       padding: 16,
+                      border: `1px solid ${d.evento?.tipo === "servicio_especial" ? COLORS.accent : COLORS.border}`,
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
@@ -503,50 +531,42 @@ export default function Negocio() {
                       style={{
                         backgroundColor:
                           d.evento?.tipo === "servicio_especial"
-                            ? COLORS.accentDim
-                            : "#1A1D27",
-                        borderRadius: 10,
-                        padding: "8px 14px",
+                            ? COLORS.accent
+                            : COLORS.bg,
+                        borderRadius: 12,
+                        padding: "10px",
                         textAlign: "center",
-                        border: `1px solid ${d.evento?.tipo === "servicio_especial" ? COLORS.accent + "44" : "transparent"}`,
-                        minWidth: 52,
+                        minWidth: 56,
+                        boxShadow: d.evento?.tipo === "servicio_especial" ? `0 4px 12px ${COLORS.accentDim}` : "none"
                       }}
                     >
                       <p
                         style={{
-                          color: COLORS.accentLight,
-                          fontSize: 11,
+                          color: d.evento?.tipo === "servicio_especial" ? "white" : COLORS.accentLight,
+                          fontSize: 10,
                           fontWeight: 700,
                           margin: 0,
+                          textTransform: "uppercase"
                         }}
                       >
                         {d.diaSemana}
                       </p>
                       <p
                         style={{
-                          color: COLORS.textPrimary,
-                          fontSize: 20,
+                          color: "white",
+                          fontSize: 22,
                           fontWeight: 800,
-                          margin: 0,
+                          margin: "2px 0",
                         }}
                       >
                         {d.dia}
                       </p>
-                      <p
-                        style={{
-                          color: COLORS.textMuted,
-                          fontSize: 11,
-                          margin: 0,
-                        }}
-                      >
-                        {d.mes}
-                      </p>
                     </div>
-                    <div style={{ textAlign: "left" }}>
+                    <div style={{ textAlign: "left", flex: 1 }}>
                       <p
                         style={{
-                          color: COLORS.textPrimary,
-                          fontSize: 15,
+                          color: "white",
+                          fontSize: 16,
                           fontWeight: 600,
                           margin: 0,
                         }}
@@ -558,11 +578,17 @@ export default function Negocio() {
                           style={{
                             color: COLORS.accentLight,
                             fontSize: 12,
-                            margin: "4px 0 0",
-                            fontWeight: 600,
+                            margin: "6px 0 0",
+                            fontWeight: 700,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            backgroundColor: COLORS.accentDim,
+                            padding: "2px 8px",
+                            borderRadius: 6
                           }}
                         >
-                          🟣 {d.evento.servicio_especial}
+                          🟣 Exclusivo {d.evento.servicio_especial}
                         </p>
                       )}
                       {d.evento?.tipo === "horario_especial" && (
@@ -570,179 +596,223 @@ export default function Negocio() {
                           style={{
                             color: "#FFAA40",
                             fontSize: 12,
-                            margin: "4px 0 0",
-                            fontWeight: 600,
+                            margin: "6px 0 0",
+                            fontWeight: 700,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            backgroundColor: "#FFAA4022",
+                            padding: "2px 8px",
+                            borderRadius: 6
                           }}
                         >
                           🟡 Horario especial
                         </p>
                       )}
                     </div>
+                    <div style={{ color: COLORS.textMuted, fontSize: 20 }}>
+                      ›
+                    </div>
                   </button>
                 ))}
               </div>
             )}
             <button
+              className="hover-scale"
               onClick={() => setPaso(1)}
               style={{
-                marginTop: 16,
+                marginTop: 20,
                 backgroundColor: "transparent",
                 border: "none",
-                color: COLORS.textMuted,
+                color: COLORS.textSecondary,
                 cursor: "pointer",
                 fontSize: 14,
+                fontWeight: 600,
+                width: "100%"
               }}
             >
-              ← Volver
+              ← Volver a servicios
             </button>
           </div>
         )}
 
         {/* Paso 3 — Hora */}
         {paso === 3 && (
-          <div>
+          <div className="animate-fade-in">
             <h2
               style={{
-                color: COLORS.textPrimary,
-                fontSize: 18,
+                color: "white",
+                fontSize: 20,
                 fontWeight: 700,
-                marginBottom: 16,
+                marginBottom: 8,
+                letterSpacing: "-0.3px"
               }}
             >
               ¿A qué hora?
             </h2>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: 10,
-              }}
-            >
-              {horasDisponibles.map((h) => (
-                <button
-                  key={h.id}
-                  onClick={() => {
-                    setHoraElegida(h.hora);
-                    setHorarioId(h.id);
-                    setPaso(4);
-                  }}
-                  style={{
-                    backgroundColor: COLORS.surface,
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: 12,
-                    padding: "14px 0",
-                    cursor: "pointer",
-                    color: COLORS.textPrimary,
-                    fontSize: 15,
-                    fontWeight: 600,
-                  }}
-                >
-                  {h.hora}
-                </button>
-              ))}
-            </div>
+            <p style={{ color: COLORS.textSecondary, marginBottom: 24, fontSize: 14, fontWeight: 500 }}>
+              {fechaElegida?.diaSemana} {fechaElegida?.dia} de {fechaElegida?.mes}
+            </p>
+
+            {horasDisponibles.length === 0 ? (
+              <div style={{ padding: 40, textAlign: "center", backgroundColor: COLORS.surface, borderRadius: 16, border: `1px dashed ${COLORS.border}` }}>
+                <p style={{ color: COLORS.textSecondary, margin: 0 }}>No quedan horarios para este día.</p>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: 12,
+                }}
+              >
+                {horasDisponibles.map((h) => (
+                  <button
+                    key={h.id}
+                    className="selectable-card"
+                    onClick={() => {
+                      setHoraElegida(h.hora);
+                      setHorarioId(h.id);
+                      setPaso(4);
+                    }}
+                    style={{
+                      borderRadius: 12,
+                      padding: "16px 0",
+                      cursor: "pointer",
+                      color: "white",
+                      fontSize: 16,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {h.hora}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <button
+              className="hover-scale"
               onClick={() => setPaso(2)}
               style={{
-                marginTop: 16,
+                marginTop: 24,
                 backgroundColor: "transparent",
                 border: "none",
-                color: COLORS.textMuted,
+                color: COLORS.textSecondary,
                 cursor: "pointer",
                 fontSize: 14,
+                fontWeight: 600,
+                width: "100%"
               }}
             >
-              ← Volver
+              ← Cambiar de día
             </button>
           </div>
         )}
 
         {/* Paso 4 — Datos */}
         {paso === 4 && (
-          <div>
+          <div className="animate-fade-in">
             <h2
               style={{
-                color: COLORS.textPrimary,
-                fontSize: 18,
+                color: "white",
+                fontSize: 20,
                 fontWeight: 700,
                 marginBottom: 8,
+                letterSpacing: "-0.3px"
               }}
             >
-              Tus datos
+              Último paso
             </h2>
-            <p
+            <div
               style={{
-                color: COLORS.textMuted,
-                fontSize: 13,
+                backgroundColor: COLORS.bg,
+                borderRadius: 12,
+                padding: "12px 16px",
                 marginBottom: 24,
+                border: `1px solid rgba(42, 46, 69, 0.5)`,
+                display: "flex", flexDirection: "column", gap: 4
               }}
             >
-              {servicioElegido ? `${servicioElegido.nombre} · ` : ""}
-              {fechaElegida?.diaSemana} {fechaElegida?.dia} de{" "}
-              {fechaElegida?.mes} · {horaElegida}
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {servicioElegido && (
+                <p style={{ color: COLORS.accentLight, fontWeight: 700, margin: 0, fontSize: 13 }}>
+                  {servicioElegido.nombre}
+                </p>
+              )}
+              <p style={{ color: "white", fontWeight: 600, margin: 0, fontSize: 15 }}>
+                {fechaElegida?.diaSemana} {fechaElegida?.dia} de{" "}
+                {fechaElegida?.mes} a las {horaElegida} hs
+              </p>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
                 <p
                   style={{
-                    color: COLORS.textMuted,
+                    color: COLORS.textSecondary,
                     fontSize: 11,
-                    letterSpacing: 1,
-                    marginBottom: 6,
+                    letterSpacing: 1.5,
+                    marginBottom: 8,
+                    fontWeight: 600
                   }}
                 >
-                  NOMBRE
+                  NOMBRE COMPLETO
                 </p>
                 <input
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
-                  placeholder="Tu nombre completo"
+                  placeholder="Ej. Juan Pérez"
                   style={{
                     width: "100%",
-                    backgroundColor: COLORS.surface,
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: 12,
-                    padding: 14,
-                    color: COLORS.textPrimary,
-                    fontSize: 15,
+                    backgroundColor: COLORS.bg,
+                    border: `1px solid ${nombre.trim() ? COLORS.accent : "rgba(42, 46, 69, 0.8)"}`,
+                    borderRadius: 14,
+                    padding: "16px",
+                    color: "white",
+                    fontSize: 16,
+                    fontWeight: 500,
                     outline: "none",
                     boxSizing: "border-box",
+                    transition: "all 0.2s"
                   }}
                 />
               </div>
               <div>
                 <p
                   style={{
-                    color: COLORS.textMuted,
+                    color: COLORS.textSecondary,
                     fontSize: 11,
-                    letterSpacing: 1,
-                    marginBottom: 6,
+                    letterSpacing: 1.5,
+                    marginBottom: 8,
+                    fontWeight: 600
                   }}
                 >
-                  TELÉFONO
+                  TELÉFONO (WHATSAPP)
                 </p>
                 <input
                   value={telefono}
                   onChange={(e) => setTelefono(e.target.value)}
-                  placeholder="Ej: 3491234567"
+                  placeholder="Ej. 11 1234 5678"
                   type="tel"
                   style={{
                     width: "100%",
-                    backgroundColor: COLORS.surface,
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: 12,
-                    padding: 14,
-                    color: COLORS.textPrimary,
-                    fontSize: 15,
+                    backgroundColor: COLORS.bg,
+                    border: `1px solid ${telefono.trim() ? COLORS.accent : "rgba(42, 46, 69, 0.8)"}`,
+                    borderRadius: 14,
+                    padding: "16px",
+                    color: "white",
+                    fontSize: 16,
+                    fontWeight: 500,
                     outline: "none",
                     boxSizing: "border-box",
+                    transition: "all 0.2s"
                   }}
                 />
               </div>
             </div>
 
-            {negocio.mp_habilitado && !pagoCompletado ? (
+            {negocio.mp_habilitado && !pagoCompletado && servicioElegido?.precio ? (
               <button
+                className="hover-scale"
                 onClick={async () => {
                   if (!nombre.trim() || !telefono.trim()) return;
                   setPagando(true);
@@ -755,7 +825,7 @@ export default function Negocio() {
                         body: JSON.stringify({
                           access_token: negocio.mp_access_token,
                           titulo: servicioElegido?.nombre || "Turno",
-                          precio: servicioElegido?.precio || 1,
+                          precio: servicioElegido?.precio,
                           nombre: nombre.trim(),
                           telefono: telefono.trim(),
                         }),
@@ -771,39 +841,42 @@ export default function Negocio() {
                 disabled={pagando || !nombre.trim() || !telefono.trim()}
                 style={{
                   width: "100%",
-                  marginTop: 24,
-                  backgroundColor: "#00AEEF",
+                  marginTop: 32,
+                  backgroundColor: "#009EE3",
                   border: "none",
                   borderRadius: 14,
-                  padding: 18,
-                  cursor: "pointer",
+                  padding: "18px",
+                  cursor: !nombre.trim() || !telefono.trim() ? "not-allowed" : "pointer",
                   color: "white",
                   fontSize: 16,
                   fontWeight: 700,
                   opacity: !nombre.trim() || !telefono.trim() ? 0.5 : 1,
+                  boxShadow: !nombre.trim() || !telefono.trim() ? "none" : `0 8px 24px rgba(0, 158, 227, 0.3)`,
                 }}
               >
-                {pagando ? "Redirigiendo..." : "Pagar con Mercado Pago"}
+                {pagando ? "Redirigiendo a Mercado Pago..." : `Pagar $${servicioElegido.precio.toLocaleString("es-AR")} y reservar`}
               </button>
             ) : (
               <button
+                className="hover-scale"
                 onClick={confirmarReserva}
                 disabled={reservando || !nombre.trim() || !telefono.trim()}
                 style={{
                   width: "100%",
-                  marginTop: 24,
+                  marginTop: 32,
                   backgroundColor: COLORS.accent,
                   border: "none",
                   borderRadius: 14,
-                  padding: 18,
-                  cursor: "pointer",
+                  padding: "18px",
+                  cursor: !nombre.trim() || !telefono.trim() ? "not-allowed" : "pointer",
                   color: "white",
                   fontSize: 16,
                   fontWeight: 700,
                   opacity: !nombre.trim() || !telefono.trim() ? 0.5 : 1,
+                  boxShadow: !nombre.trim() || !telefono.trim() ? "none" : `0 8px 24px ${COLORS.accentDim}`,
                 }}
               >
-                {reservando ? "Confirmando..." : "Confirmar turno"}
+                {reservando ? "Confirmando reserva..." : "Confirmar reserva"}
               </button>
             )}
 
@@ -811,31 +884,35 @@ export default function Negocio() {
               !negocio.mp_obligatorio &&
               !pagoCompletado && (
                 <button
+                  className="hover-scale"
                   onClick={() => setPagoCompletado(true)}
                   style={{
                     width: "100%",
-                    marginTop: 10,
+                    marginTop: 16,
                     backgroundColor: "transparent",
                     border: "none",
-                    color: COLORS.textMuted,
+                    color: COLORS.textSecondary,
                     cursor: "pointer",
-                    fontSize: 13,
+                    fontSize: 14,
+                    fontWeight: 600
                   }}
                 >
-                  Continuar sin pagar
+                  Continuar sin pagar (abonar en el local)
                 </button>
               )}
 
             <button
+              className="hover-scale"
               onClick={() => setPaso(3)}
               style={{
-                marginTop: 12,
-                width: "100%",
+                marginTop: 16,
                 backgroundColor: "transparent",
                 border: "none",
-                color: COLORS.textMuted,
+                color: COLORS.textSecondary,
                 cursor: "pointer",
                 fontSize: 14,
+                fontWeight: 600,
+                width: "100%"
               }}
             >
               ← Volver
