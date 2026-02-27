@@ -203,6 +203,22 @@ export default function Negocio() {
         .from("horarios")
         .update({ disponible: false })
         .eq("id", horarioId);
+
+      // Enviar notificación al dueño
+      if (negocio.expo_push_token) {
+        await fetch("https://app-turnos-4qaf.onrender.com/notificar-reserva", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            push_token: negocio.expo_push_token,
+            cliente_nombre: nombre.trim(),
+            fecha: `${fechaElegida.diaSemana} ${fechaElegida.dia} de ${fechaElegida.mes}`,
+            hora: horaElegida,
+            servicio: servicioElegido?.nombre || null,
+          }),
+        });
+      }
+
       navigate("/confirmado", {
         state: {
           negocio: negocio.nombre,
