@@ -75,7 +75,6 @@ export default function Negocio() {
     }
 
     setNegocio(negocioData);
-    console.log("mp_habilitado:", negocioData.mp_habilitado);
 
     const { data: serviciosData } = await supabase
       .from("servicios")
@@ -90,39 +89,67 @@ export default function Negocio() {
 
   const cargarDiasDisponibles = async (negocioId, servicioNombre) => {
     setCargandoDias(true);
-    const hoy = new Date();
-    const dias = [];
 
+    // Calcular rango de fechas
+    const hoy = new Date();
+    const fechas = [];
     for (let i = 0; i < 14; i++) {
       const d = new Date(hoy);
       d.setDate(hoy.getDate() + i);
       const yyyy = d.getFullYear();
       const mm = String(d.getMonth() + 1).padStart(2, "0");
       const dd = String(d.getDate()).padStart(2, "0");
-      const fecha = `${yyyy}-${mm}-${dd}`;
+      fechas.push({ fecha: `${yyyy}-${mm}-${dd}`, d });
+    }
 
-      const { data: eventos } = await supabase
+    const fechaInicio = fechas[0].fecha;
+    const fechaFin = fechas[fechas.length - 1].fecha;
+
+    // 3 consultas en paralelo en lugar de 28 en secuencia
+    const [eventosRes, horariosRes, eventosServicioRes] = await Promise.all([
+      supabase
         .from("eventos_especiales")
-        .select("tipo, servicio_especial")
+        .select("fecha, tipo, servicio_especial")
         .eq("admin_id", negocioId)
-        .eq("fecha", fecha);
+        .gte("fecha", fechaInicio)
+        .lte("fecha", fechaFin),
+      supabase
+        .from("horarios")
+        .select("fecha")
+        .eq("admin_id", negocioId)
+        .eq("disponible", true)
+        .gte("fecha", fechaInicio)
+        .lte("fecha", fechaFin),
+      servicioNombre
+        ? supabase
+            .from("eventos_especiales")
+            .select("id")
+            .eq("admin_id", negocioId)
+            .eq("tipo", "servicio_especial")
+            .eq("servicio_especial", servicioNombre)
+        : Promise.resolve({ data: null }),
+    ]);
 
-      const evento = eventos?.[0] || null;
+    // Crear mapas para búsqueda rápida
+    const eventosPorFecha = {};
+    for (const e of eventosRes.data || []) {
+      eventosPorFecha[e.fecha] = e;
+    }
+
+    const fechasConHorarios = new Set(
+      (horariosRes.data || []).map((h) => h.fecha),
+    );
+    const tienesDiasEspeciales =
+      eventosServicioRes.data && eventosServicioRes.data.length > 0;
+
+    // Procesar días
+    const dias = [];
+    for (const { fecha, d } of fechas) {
+      const evento = eventosPorFecha[fecha] || null;
 
       if (evento?.tipo === "feriado") continue;
 
-      // Verificar si el servicio tiene algún día especial asignado
       if (servicioNombre) {
-        const { data: eventosDelServicio } = await supabase
-          .from("eventos_especiales")
-          .select("id")
-          .eq("admin_id", negocioId)
-          .eq("tipo", "servicio_especial")
-          .eq("servicio_especial", servicioNombre);
-
-        const tienesDiasEspeciales =
-          eventosDelServicio && eventosDelServicio.length > 0;
-
         if (tienesDiasEspeciales) {
           if (
             !evento ||
@@ -131,25 +158,17 @@ export default function Negocio() {
           )
             continue;
         } else {
-          // Servicio normal: no mostrar días que tengan un servicio especial diferente
           if (evento?.tipo === "servicio_especial") continue;
         }
       }
 
-      const { data: horarios } = await supabase
-        .from("horarios")
-        .select("id")
-        .eq("admin_id", negocioId)
-        .eq("fecha", fecha)
-        .eq("disponible", true);
-
-      if (horarios && horarios.length > 0) {
+      if (fechasConHorarios.has(fecha)) {
         dias.push({
           fecha,
           dia: d.getDate(),
           mes: MESES[d.getMonth()],
           diaSemana: DIAS_SEMANA[d.getDay()],
-          evento: evento,
+          evento,
         });
       }
 
@@ -204,7 +223,6 @@ export default function Negocio() {
         .update({ disponible: false })
         .eq("id", horarioId);
 
-      // Enviar notificación al dueño
       if (negocio.expo_push_token) {
         await fetch("https://app-turnos-4qaf.onrender.com/notificar-reserva", {
           method: "POST",
@@ -722,7 +740,7 @@ export default function Negocio() {
                 />
               </div>
             </div>
-            {/* Si MP está habilitado y no pagó todavía */}
+
             {negocio.mp_habilitado && !pagoCompletado ? (
               <button
                 onClick={async () => {
@@ -744,9 +762,7 @@ export default function Negocio() {
                       },
                     );
                     const data = await res.json();
-                    if (data.init_point) {
-                      window.location.href = data.init_point;
-                    }
+                    if (data.init_point) window.location.href = data.init_point;
                   } catch (e) {
                     alert("Error al conectar con Mercado Pago.");
                   }
@@ -791,7 +807,6 @@ export default function Negocio() {
               </button>
             )}
 
-            {/* Si MP está habilitado pero no es obligatorio, mostrar opción de saltar */}
             {negocio.mp_habilitado &&
               !negocio.mp_obligatorio &&
               !pagoCompletado && (
@@ -810,6 +825,21 @@ export default function Negocio() {
                   Continuar sin pagar
                 </button>
               )}
+
+            <button
+              onClick={() => setPaso(3)}
+              style={{
+                marginTop: 12,
+                width: "100%",
+                backgroundColor: "transparent",
+                border: "none",
+                color: COLORS.textMuted,
+                cursor: "pointer",
+                fontSize: 14,
+              }}
+            >
+              ← Volver
+            </button>
           </div>
         )}
       </div>
